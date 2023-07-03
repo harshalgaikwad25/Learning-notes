@@ -1,0 +1,113 @@
+Create a  AMI instance 
+
+AMI name = al2023-ami-2023.0.20230329.0-kernel-6.1-x86_64
+
+Install jenkins and java on amezone linux 
+
+https://www.jenkins.io/doc/tutorials/tutorial-for-installing-jenkins-on-AWS/
+java version - openjdk version "11.0.18" 2023-01-17 LTS
+
+------------------------------------------------------------------------------------------
+Install MAVEN on amezone linux
+
+https://www.digitalocean.com/community/tutorials/install-maven-linux-ubuntu
+https://maven.apache.org/download.cgi
+
+wget https://dlcdn.apache.org/maven/maven-3/3.8.8/binaries/apache-maven-3.8.8-bin.tar.gz
+
+tar -xvf apache-maven-3.8.8-bin.tar.gz
+mv apache-maven-3.8.8 maven
+$ mv maven /opt
+Step 2: Setting M2_HOME and Path Variables
+M2_HOME='/opt/maven'
+PATH="$M2_HOME/bin:$PATH"
+export PATH
+
+vi ~/.bashrc
+
+export PATH=/opt/maven/bin:$PATH
+
+[root@testmachine java-hello-world-with-maven]# mvn -v
+Apache Maven 3.8.8 (4c87b05d9aedce574290d1acc98575ed5eb6cd39)
+Maven home: /opt/maven 
+Java version: 11.0.18, vendor: Amazon.com Inc., runtime: /usr/lib/jvm/java-11-amazon-corretto.x86_64
+Default locale: en, platform encoding: UTF-8
+OS name: "linux", version: "6.1.23-36.46.amzn2023.x86_64", arch: "amd64", family: "unix"
+
+--------------------------------------------------------------------------------------------------------
+
+Install git on ami instance . - yum install git
+---------------------------------------------------------------------------------
+Configure maven in jenkins
+
+Dashboard > Manage Jenkins > Global Tool Configuration
+
+Name = maven3
+Maven_HOME = /opt/maven
+--------------------------------------------------------------------
+
+Add any sample java code in github account 
+
+https://github.com/harshalgaikwad25/java-hello-world-with-maven.git
+https://github.com/harshalgaikwad25/javaparser-maven-sample.git
+https://github.com/harshalgaikwad25/hello-world-war.git
+
+
+
+Add webhook 
+repo setting > webhook 
+http://ip:8080/github-webhook/
+ip = jenkins url ip 
+
+---------------------------------------------------------------------------------
+create freestyle project on jenkins
+
+- add jenkins credentail 
+- add github credentail
+--------------------------------------------------------
+Build step
+
+Invoke top-level Maven targets
+
+Maven Version - maven3
+Goals   - clean package
+----------------------------------------------------
+1- Add the github credential . 
+2 - add github clone url 
+
+Build triggers
+ - Github hook trigger for gitsum polling 
+
+
+SAVE
+Build
+
+--------------------------------------------------
+Configure Tomcat server on another EC@ instance 
+Refer PDF documents - file:///C:/Users/Icon/Desktop/Jenkins-Learning/Install%20Tomcat%20in%20ami%20instance%20(1).pdf
+
+AMI Name - amzn2-ami-kernel-5.10-hvm-2.0.20230628.0-x86_64-gp2
+
+------------------------------------------------------------
+
+Post-build Actions
+
+  Deploy war/ear to a container
+     **/*.war       
+  
+  Context path
+   
+	
+  Containers
+    Tomcat 7.x Remote
+  credential
+     tomcat-remote
+  Tomcat-url  
+      http://13.48.43.134:8080/
+
+   SAVE  Build
+   
+ -------------------------------------------
+
+
+
