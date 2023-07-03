@@ -1,0 +1,102 @@
+Create a  AMI instance 
+
+AMI name = al2023-ami-2023.0.20230329.0-kernel-6.1-x86_64
+
+
+Install jenkins and java on amezone linux 
+
+https://www.jenkins.io/doc/tutorials/tutorial-for-installing-jenkins-on-AWS/
+
+java version - openjdk version "11.0.18" 2023-01-17 LTS
+
+----------------------------------------------------------------------------------------------------------
+Install MAVEN on amezone linux 
+
+Referance documents :
+https://www.digitalocean.com/community/tutorials/install-maven-linux-ubuntu
+https://maven.apache.org/download.cgi
+
+Steps to install MAVEN
+
+wget https://dlcdn.apache.org/maven/maven-3/3.8.8/binaries/apache-maven-3.8.8-bin.tar.gz
+
+tar -xvf apache-maven-3.8.8-bin.tar.gz
+mv apache-maven-3.8.8 maven
+$ mv maven /opt/
+Step 2: Setting M2_HOME and Path Variables
+M2_HOME='/opt/maven'
+PATH="$M2_HOME/bin:$PATH"
+export PATH
+
+vi ~/.bashrc
+
+export PATH=/opt/maven/bin:$PATH
+
+Apache Maven 3.8.8 (4c87b05d9aedce574290d1acc98575ed5eb6cd39)
+
+-------------------------------------------------------------------------------------------------------------------
+Install git on ami instance . - yum install git
+--------------------------------------------------------
+- add jenkins credentail 
+- add github credentail
+--------------------------------------------------------
+Configure maven 
+
+Dashboard > Manage Jenkins > Global Tool Configuration
+
+Name = maven3
+Maven_HOME = /opt/maven
+
+-----------------------------------------------------------
+
+Configure Tomcat server on another EC@ instance 
+Refer PDF documents - file:///C:/Users/Icon/Desktop/Jenkins-Learning/Install%20Tomcat%20in%20ami%20instance%20(1).pdf
+
+-------------------------------------------------------------
+Dashboard > Manage Jenkins > Credentials > System > Global credentials (unrestricted)
+
+Add tomcat credentials
+
+
+Create a pipeline job 
+
+IN Pipeline section select Defination as (Pipeline scripts)
+-------------------------------------------------------------------------------------
+
+pipeline {
+    agent any
+     // Install the Maven version configured as "M3" and add it to the path.
+     tools {
+        // Install the Maven version configured as "M3" and add it to the path.
+        maven "maven3"
+		   }  
+   stages {
+        stage('clone') {
+            steps {
+                // Get some code from a GitHub repository
+                git credentialsId: 'github', url: 'https://github.com/harshalgaikwad25/hello-world-war.git'
+            }
+        }
+        stage('Build') {
+            steps {
+                sh 'mvn clean package'
+            }
+            }
+        stage('artifact'){
+            steps {
+                archiveArtifacts artifacts: 'target/*.war', followSymlinks: false
+            }
+        }
+         stage('deploy'){
+           steps {
+               withCredentials([usernameColonPassword(credentialsId: 'tomcat_credentials', variable: 'tomcat')]) {
+               sh "curl -v -u ${tomcat} -T /var/lib/jenkins/workspace/Test-job/pipeline-git/target/*.war 'http://13.48.43.134:8080/manager/text/deploy?path=/myapp1&update=true'"
+               }            
+            }
+        }     
+   }
+}
+
+
+-----------------------------------------
+Build
