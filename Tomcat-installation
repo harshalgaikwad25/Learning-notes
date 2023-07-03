@@ -1,0 +1,40 @@
+Istall Tomcat on AMI EC@ instance
+
+AMI Name - amzn2-ami-kernel-5.10-hvm-2.0.20230628.0-x86_64-gp2
+
+1. first we need to install java if its new instance if alreay installed not required to install.
+$ sudo yum install java-1.8.0 -y
+
+2. install tomcat
+$ sudo yum install tomcat –y
+ $ sudo yum install tomcat-webapps tomcat-docs-webapp tomcat-admin-webapps -y
+ 
+3. goto tomcat installation directory i.e /etc/tomcat/ for change any configuration.
+For ex need to be configure port and users and roles. if the file is ready only mode open the file with sudo permissions.
+4. Now I want to change default port I.e 8080 to 8181. Because my Jenkins also running on same port. If both are same port the server won’t be start its trough the error address
+already bind exception.
+5. Open the server.xml file under /etc/tomcat/server.xml file and and chage the port and
+save it.
+6. Now I want add tomcat webui username and password and roles . Open the tomcatusers.xml file and edit and save it.. /etc/tomcat/tomcat-users.xml. add below content
+under <tomcat-users> tag..
+
+<tomcat-users>
+<role rolename="admin"/>
+<role rolename="admin-gui"/>
+<role rolename="admin-script"/>
+<role rolename="manager"/>
+<role rolename="manager-gui"/>
+<role rolename="manager-script"/>
+<role rolename="manager-jmx"/>
+<role rolename="manager-status"/>
+<user name="admin" password="admin" roles="admin,manager,admin-gui,adminscript,manager-gui,manager-script,manager-jmx,manager-status" />
+</tomcat-users>
+
+7. Start the tomcat service and check the status.
+$ sudo service tomcat start
+$ sudo service tomcat status
+8. Open inbound out bound rules to access out tomcat server webui with new port i.e 8080
+9. And access the http://your-server-ip:8080/
+Click manager app and enter username and password i.e admin/admin as we configured at
+tomcat-users.xml file
+
