@@ -1,0 +1,247 @@
+https://github.com/harshalgaikwad25/sparkjava-war-example.git
+https://github.com/harshalgaikwad25/war-web-project.git
+
+
+EC2 INSTANCE - t2.small
+---------------------------------------
+Dashboard > Manage jenkins > Tools
+
+jdk11 - /usr/lib/jvm/java-11-amazon-corretto.x86_64
+git - /usr/bin/git
+maven3 - /opt/apache-maven-3.8.8
+
+---------------------------------
+Dashboard > Manage jenkins > plugin
+
+Docker plugin
+Docker Pipeline
+Docker Commons Plugin
+docker-build-step
+-------------------------------------
+withDockerRegistry: Sets up Docker registry endpoint
+Docker registry URL :  https://registry-1.docker.io
+Registry credentials : harshalgaikwad/****** (docker hub login)
+----------------
+ERROR: Cannot connect to the Docker daemon at unix:///var/run/docker.sock. Is the docker daemon running?
+Install docker on ec2 instance.
+
+yum install docker -y
+usermod -aG docker jenkins
+systemctl restart jenkins
+docker tag webapp harshalgaikwad/webapp:latest
+docker push  harshalgaikwad/webapp:latest
+docker login -u "harshalgaikwad" --password "************"
+docker login 
+
+------------------------------
+pipeline {    
+    agent any 
+
+    tools {
+        jdk 'jdk17'
+        maven 'maven3'
+          }
+          
+    stages {
+        
+        stage ('hello') {
+            steps {
+                echo 'Hello World'
+            }
+        }       
+        stage ('git checkout') {
+            steps {
+                checkout scmGit(branches: [[name: '*/master']], extensions: [], userRemoteConfigs: [[url: 'https://github.com/harshalgaikwad25/war-web-project.git']])
+            }
+        }        
+        stage ('maven compile') {
+            steps {
+                sh '''mvn compile'''
+            }
+        }        
+        stage ('mvn build') {
+            steps {
+                sh '''mvn clean package'''
+            }
+        }        
+        stage ('Docker build and push') {
+            steps {
+                script {
+                   withDockerRegistry(credentialsId: 'docker-hub', url: 'https://registry-1.docker.io',  toolName: 'docker' )
+                    {
+                        sh '''  docker build -t app . '''
+                        sh '''  docker tag app  harshalgaikwad/app:latest '''
+                        sh '''  docker login -u "harshalgaikwad" --password "*********" '''
+                        sh '''  docker push harshalgaikwad/app:latest '''
+                    }
+                }
+            }
+        }        
+        stage('Clean Up') {
+            steps {
+                script {
+                    sh 'docker stop my-app || true'
+                    sh 'docker rm my-app || true'
+                }
+            }
+        }        
+        stage ('Deploy app on tomcat') {
+            steps {
+                script {
+                   withDockerRegistry(credentialsId: 'docker-hub', url: 'https://registry-1.docker.io',  toolName: 'docker' )
+                    {
+                        sh '''  docker run -d --name my-app  -p 8081:8080 harshalgaikwad/app:latest'''
+
+                    }
+                }
+            }
+        }   
+    }
+}
+
+
+----------------------
+pipeline {
+    
+    agent any 
+    
+    tools {
+        jdk 'jdk17'
+        maven 'maven3'
+          }
+          
+    stages {
+        
+        stage ('hello') {
+            steps {
+                echo 'Hello World'
+            }
+        }
+        
+        stage ('git checkout') {
+            steps {
+                checkout scmGit(branches: [[name: '*/master']], extensions: [], userRemoteConfigs: [[url: 'https://github.com/harshalgaikwad25/sparkjava-war-example.git']])
+            }
+        }
+        
+        stage ('maven compile') {
+            steps {
+                sh '''mvn compile'''
+            }
+        }
+        
+        stage ('mvn build') {
+            steps {
+                sh '''mvn clean package -DskipTests'''
+            }
+        }
+        
+        stage ('Docker build and push') {
+            steps {
+                script {
+                   withDockerRegistry(credentialsId: 'docker-hub', url: 'https://registry-1.docker.io',  toolName: 'docker' )
+                    {
+                        sh '''  docker build -t app . '''
+                        sh '''  docker tag app  harshalgaikwad/app:latest '''
+                        sh '''  docker login -u "harshalgaikwad" --password "******" '''
+                        sh '''  docker push harshalgaikwad/app:latest '''
+                    }
+                }
+            }
+        }
+        
+        stage('Clean Up') {
+            steps {
+                script {
+                    sh 'docker stop my-app || true'
+                    sh 'docker rm my-app || true'
+                }
+            }
+        }
+        
+        stage ('Deploy app on tomcat') {
+            steps {
+                script {
+                   withDockerRegistry(credentialsId: 'docker-hub', url: 'https://registry-1.docker.io',  toolName: 'docker' )
+                    {
+                        sh '''  docker run -d --name my-app  -p 8081:8080 harshalgaikwad/app:latest'''
+
+                    }
+                }
+            }
+        }      
+    }
+}
+-------------------------------------------------------------------------------------------------------------------
+
+pipeline {
+    
+    agent any 
+    
+    tools {
+        jdk 'jdk17'
+        maven 'maven3'
+          }
+          
+    stages {
+        
+        stage ('hello') {
+            steps {
+                echo 'Hello World'
+            }
+        }
+        
+        stage ('git checkout') {
+            steps {
+                checkout scmGit(branches: [[name: '*/main']], extensions: [], userRemoteConfigs: [[url: 'https://github.com/jaiswaladi246/Petclinic.git']])
+            }
+        }
+        
+        stage ('maven compile') {
+            steps {
+                sh '''mvn compile'''
+            }
+        }
+        
+        stage ('mvn build') {
+            steps {
+                sh '''mvn clean package'''
+            }
+        }
+        
+        stage ('Docker build and push') {
+            steps {
+                script {
+                   withDockerRegistry(credentialsId: 'docker-hub', url: 'https://registry-1.docker.io') , toolName: 'docker' )
+                    {
+                        sh '''  docker build -t app . '''
+                        sh '''  docker tag app  harshalgaikwad/app:latest '''
+                        sh '''  docker login -u "harshalgaikwad" --password "**********" '''
+                        sh '''  docker push harshalgaikwad/app:latest '''
+                    }
+                }
+            }
+        }
+            
+        
+    }
+}
+
+
+--------------------------------------------
+
+Dockerfile :
+
+FROM openjdk:8
+EXPOSE 8082
+ADD target/petclinic.war petclinic.war
+ENTRYPOINT ["java","-jar","/petclinic.war"]
+
+no main manifest attribute, in petclinic.war
+
+
+docker run -d --name my-app3 -p 8081:8080 14d23e0ac547
+
+docker run -d --name my-app3 -p 8081:8080 f3ac0ee23fe9
+
+----------------------------------------------------------------------------------------------------
