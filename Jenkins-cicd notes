@@ -6,7 +6,7 @@ EC2 INSTANCE - t2.small
 ---------------------------------------
 Dashboard > Manage jenkins > Tools
 
-jdk11 - /usr/lib/jvm/java-11-amazon-corretto.x86_64
+jdk17 - /usr/lib/jvm/java-17-amazon-corretto.x86_64
 git - /usr/bin/git
 maven3 - /opt/apache-maven-3.8.8
 
