@@ -277,6 +277,53 @@ pipeline {
         
 }
 }
+---------------------------------------------------------------------------------------
+pipeline {
+    agent any
+    
+    tools {
+        jdk 'jdk17'
+        maven 'maven3'
+    }
+
+    stages {
+        stage('Git checkout ') {
+            steps {
+                checkout scmGit(branches: [[name: '*/main']], extensions: [], userRemoteConfigs: [[url: 'https://github.com/harshalgaikwad25/FullStack-Blogging-App.git']])
+            }
+        }
+        stage ('maven build') {
+            steps {
+                sh 'mvn clean package'
+            }
+        }
+        stage ('docker build and push ') {
+            steps {
+                script {
+                   withDockerRegistry(credentialsId: 'docker-hub', url: 'https://registry-1.docker.io' , toolName: 'docker' ) 
+                    {
+                        sh 'docker build -t blogging-app .'
+                        sh 'docker tag app  harshalgaikwad/blogging-app:latest'
+                        sh 'docker login -u "harshalgaikwad" --password "***********" '
+                        sh 'docker push harshalgaikwad/blogging-app:latest'
+                    }
+                       }
+                  }
+        }
+        stage ('deply on container') {
+            steps {
+                 script {
+                   withDockerRegistry(credentialsId: 'docker-hub', url: 'https://registry-1.docker.io' , toolName: 'docker' )
+                   {
+                       sh 'docker run -d -p 8081:8080 --name blogging-app1 blogging-app'
+                
+                   }       
+                   }
+        }
+        }
+        
+}
+}
 
 Dockerfile :
 
