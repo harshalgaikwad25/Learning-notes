@@ -229,9 +229,62 @@ pipeline {
 
 
 --------------------------------------------
+***********BANK APP LOGIN *******
+
+pipeline {
+    agent any
+    
+    tools {
+        jdk 'jdk17'
+        maven 'maven3'
+    }
+
+    stages {
+        stage('Git checkout ') {
+            steps {
+                checkout scmGit(branches: [[name: '*/start']], extensions: [], userRemoteConfigs: [[url: 'https://github.com/harshalgaikwad25/Bank-App.git']])
+            }
+        }
+        stage ('maven build') {
+            steps {
+                sh 'mvn clean package'
+            }
+        }
+        stage ('docker build and push ') {
+            steps {
+                script {
+                   withDockerRegistry(credentialsId: 'docker-hub', url: 'https://registry-1.docker.io' , toolName: 'docker' ) 
+                    {
+                        sh 'docker build -t app .'
+                        sh 'docker tag app  harshalgaikwad/app:latest'
+                        sh 'docker login -u "harshalgaikwad" --password "*******" '
+                        sh 'docker push harshalgaikwad/app:latest'
+                    }
+                       }
+                  }
+        }
+        stage ('deply on container') {
+            steps {
+                 script {
+                   withDockerRegistry(credentialsId: 'docker-hub', url: 'https://registry-1.docker.io' , toolName: 'docker' )
+                   {
+                       sh 'docker run -d -p 8081:8080 --name bankapp app'
+                
+                   }       
+                   }
+        }
+        }
+        
+}
+}
 
 Dockerfile :
 
+FROM openjdk:17
+ADD target/bankapp-0.0.1-SNAPSHOT.jar bankapp-0.0.1-SNAPSHOT.jar
+ENTRYPOINT ["java","-jar","/bankapp-0.0.1-SNAPSHOT.jar"]
+
+---------------
 FROM openjdk:8
 EXPOSE 8082
 ADD target/petclinic.war petclinic.war
