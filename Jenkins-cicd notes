@@ -325,6 +325,81 @@ pipeline {
 }
 }
 
+
+--------------------------------------------------------------------------------------------
+pipeline {
+    agent any
+    
+    tools {
+       // jdk 'jdk17'
+        maven 'maven3'
+          }
+          
+    environment {
+        JAVA_HOME = '/usr/lib/jvm/java-17-amazon-corretto.x86_64'  // Set your JAVA_HOME path
+        PATH = "${JAVA_HOME}/bin:${env.PATH}"  // Update PATH to include JAVA_HOME/bin
+    }
+
+    stages {
+        stage('Hello') {
+            steps {
+                echo 'Hello World'
+                sh 'echo $JAVA_HOME'
+                sh 'echo $PATH'
+            }
+        }
+        stage ('git checkout') {
+            steps {
+                checkout scmGit(branches: [[name: '*/start']], extensions: [], userRemoteConfigs: [[url: 'https://github.com/harshalgaikwad25/Bank-App.git']])
+            }
+        }        
+        stage ('maven compile') {
+            steps {
+                sh '''mvn compile'''
+            }
+        }        
+        stage ('mvn build') {
+            steps {
+                sh '''mvn clean package'''
+            }
+        }
+        stage ('docker build ') {
+            steps {
+                script {
+                    withDockerRegistry(credentialsId: 'docker-hub', url: 'https://registry-1.docker.io') {
+                    
+                    sh '''  docker build -t app1 . '''
+                    sh '''  docker tag app1  harshalgaikwad/app1:latest '''
+                    sh '''  docker login -u "harshalgaikwad" --password "Gaikwad@1997" '''
+                    sh '''  docker push harshalgaikwad/app1:latest '''
+                    }
+                }
+            }
+        }
+        stage('Clean Up') {
+            steps {
+                script {
+                    sh 'docker stop my-app || true'
+                    sh 'docker rm my-app || true'
+                }
+            }
+        }
+        stage ('Deploy app on tomcat') {
+            steps {
+                script {
+                   withDockerRegistry(credentialsId: 'docker-hub', url: 'https://registry-1.docker.io',  toolName: 'docker' )
+                    {
+                        sh '''  docker run -d --name my-app  -p 8081:8080 harshalgaikwad/app1:latest'''
+
+                    }
+                }
+            }
+        }
+        
+    }
+}
+-----------------------
+
 Dockerfile :
 
 FROM openjdk:17
