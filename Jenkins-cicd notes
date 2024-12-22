@@ -31,6 +31,8 @@ Install docker on ec2 instance.
 
 yum install docker -y
 usermod -aG docker jenkins
+service docker start
+service docker enabel
 systemctl restart jenkins
 docker tag webapp harshalgaikwad/webapp:latest
 docker push  harshalgaikwad/webapp:latest
