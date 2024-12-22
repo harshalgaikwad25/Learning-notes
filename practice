@@ -1,0 +1,35 @@
+pipeline {
+    agent any 
+    
+    stages {
+        
+        stage ('stage 1') {
+         steps { 
+            sh 'echo hello world'
+            echo "build number is ${currentBuild.number}"
+            echo "build resule is ${currentBuild.result}"
+            echo "build id is ${currentBuild.id}"
+            echo "build result is ${currentBuild.currentResult}" 
+            echo "project name is ${currentBuild.projectName}"
+            echo "djkwkdeed ${BUILD_NUMBER}"
+            echo "job name is ${JOB_NAME}"
+            echo "job tag is ${BUILD_TAG}"
+            echo "workspace is ${WORKSPACE}"
+            echo "job url is ${JOB_URL}"
+            echo "build url is ${BUILD_URL}"
+        }
+        post {
+         success  {
+             script {
+                 currentBuild.result = 'SUCCESS'
+             }
+         }
+     }
+     }
+ }
+ post {
+     always {
+          echo currentBuild.currentResult
+     }
+ }
+}
