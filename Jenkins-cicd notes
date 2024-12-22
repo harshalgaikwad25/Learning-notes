@@ -585,7 +585,78 @@ pipeline {
     }
 }
 
+----------------------------------------------
 
+pipeline {
+    agent any 
+    
+    tools {
+        jdk 'jdk17'
+        maven 'maven3'
+    }
+    
+    stages {
+        stage ('hello') {
+            steps {
+                sh 'echo "hello world"'
+                sh 'uname -a '
+                sh 'df -h'
+                sh 'whoami'
+                sh 'ps -ef | grep java'
+                sh 'free -gh'
+            }
+        }
+        
+        stage ('git checkout ') {
+            steps {
+                checkout scmGit(branches: [[name: '*/main']], extensions: [], gitTool: 'Default', userRemoteConfigs: [[url: 'https://github.com/harshalgaikwad25/BoardGame.git']])
+            }
+        }
+        
+        stage ('maven compile') {
+            steps {
+                sh 'mvn compile'
+                sh 'mvn test'
+            }
+        }
+        stage ('maven build') {
+            steps {
+                sh 'mvn package'
+            }
+        }
+        stage ('build docker image')
+        {
+            steps {
+                withDockerRegistry(credentialsId: 'docker-cred', url: 'https://index.docker.io/v1/') {
+                    sh 'docker build -t boardgame .'
+                    sh 'docker tag  boardgame harshalgaikwad/boardgame:latest'
+                }
+            }
+        }
+        stage ('push docker image') {
+            steps {
+                withDockerRegistry(credentialsId: 'docker-cred', url: 'https://index.docker.io/v1/') {
+                    sh 'docker push harshalgaikwad/boardgame:latest'
+                }
+            }
+        }
+        stage ('clean up') {
+            steps {
+                sh 'docker stop app || true '
+                sh 'docker rm app || true'
+            }
+        }
+        stage ('docker conatiner') {
+            steps {
+                withDockerRegistry(credentialsId: 'docker-cred', url: 'https://index.docker.io/v1/') {
+                sh "docker run -d --name app  -p 8081:8080 harshalgaikwad/boardgame:latest" 
+                
+                }
+            }
+        }
+        
+    }
+}
 ----------------------------------------------------
 Dockerfile :
 
