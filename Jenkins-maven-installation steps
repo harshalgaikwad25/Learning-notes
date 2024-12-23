@@ -19,12 +19,11 @@ systemctl start jenkins
 systemctl status jenkins
 
 -------------------------------------
-
 [root@ip-172-31-25-178 ~]# cat maven.sh
 #!/bin/bash
 set -ex
 
-#wget https://dlcdn.apache.org/maven/maven-3/3.8.8/binaries/apache-maven-3.8.8-bin.tar.gz
+wget https://dlcdn.apache.org/maven/maven-3/3.8.8/binaries/apache-maven-3.8.8-bin.tar.gz
 
 tar -xvf apache-maven-3.8.8-bin.tar.gz
 mv apache-maven-3.8.8 /opt
@@ -37,7 +36,17 @@ export PATH
 mvn -v
 
 # Install the git in linux
-yum install git
+yum install git -y
+
+# export java home
+export JAVA_HOME=/usr/lib/jvm/java-17-amazon-corretto.x86_64
+
+# install docker
+yum install docker -y
+usermod -aG docker jenkins
+service docker start
+systemctl docker enabel
+systemctl restart jenkins
 -------------------------------------------------
 How to check all java version 
 update-alternatives --config java
