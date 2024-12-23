@@ -4,15 +4,10 @@ set -ex
 
 wget -O /etc/yum.repos.d/jenkins.repo \
     https://pkg.jenkins.io/redhat-stable/jenkins.repo
-
 rpm --import https://pkg.jenkins.io/redhat-stable/jenkins.io-2023.key
-
 yum upgrade
-
 yum install java-17-amazon-corretto -y
-
 yum install jenkins -y
-
 systemctl enable jenkins
 
 systemctl start jenkins
@@ -23,11 +18,10 @@ systemctl status jenkins
 #!/bin/bash
 set -ex
 
+# Install maven ##
 wget https://dlcdn.apache.org/maven/maven-3/3.8.8/binaries/apache-maven-3.8.8-bin.tar.gz
-
 tar -xvf apache-maven-3.8.8-bin.tar.gz
 mv apache-maven-3.8.8 /opt
-
 M2_HOME='/opt/apache-maven-3.8.8'
 echo $M2_HOME
 PATH="$M2_HOME/bin:$PATH"
@@ -35,19 +29,20 @@ echo $PATH
 export PATH
 mvn -v
 
+# export java home ##
+export JAVA_HOME=/usr/lib/jvm/java-17-amazon-corretto.x86_64
+export PATH=$JAVA_HOME/bin:$PATH
+
 # Install the git in linux
 yum install git -y
 
-# export java home
-export JAVA_HOME=/usr/lib/jvm/java-17-amazon-corretto.x86_64
-
-# install docker
+# install docker ##
 yum install docker -y
 usermod -aG docker jenkins
 service docker start
 systemctl docker enabel
 systemctl restart jenkins
--------------------------------------------------
+-----------------------------------------------------------------------------------------------------------------------
 How to check all java version 
 update-alternatives --config java
 
