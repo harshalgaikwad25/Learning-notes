@@ -36,6 +36,9 @@ export PATH=$JAVA_HOME/bin:$PATH
 # Install the git in linux
 yum install git -y
 
+# Install trivy ##
+rpm -ivh https://github.com/aquasecurity/trivy/releases/download/v0.18.3/trivy_0.18.3_Linux-64bit.rpm
+
 # install docker ##
 yum install docker -y
 usermod -aG docker jenkins
