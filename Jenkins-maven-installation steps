@@ -43,7 +43,7 @@ rpm -ivh https://github.com/aquasecurity/trivy/releases/download/v0.18.3/trivy_0
 yum install docker -y
 usermod -aG docker jenkins
 service docker start
-systemctl docker enabel
+systemctl enable docker
 systemctl restart jenkins
 -----------------------------------------------------------------------------------------------------------------------
 How to check all java version 
