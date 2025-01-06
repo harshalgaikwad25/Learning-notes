@@ -1,0 +1,767 @@
+https://github.com/harshalgaikwad25/BoardGame.git
+https://github.com/harshalgaikwad25/sparkjava-war-example.git
+https://github.com/harshalgaikwad25/war-web-project.git
+https://github.com/harshalgaikwad25/Bank-App.git
+https://github.com/harshalgaikwad25/FullStack-Blogging-App.git
+https://github.com/harshalgaikwad25/Secret-Santa-CICD.git
+https://github.com/harshalgaikwad25/Mission.git (super spy app)
+
+EC2 INSTANCE - t2.small
+---------------------------------------
+Dashboard > Manage jenkins > Tools
+
+jdk17 - /usr/lib/jvm/java-17-amazon-corretto.x86_64
+git - /usr/bin/git
+maven3 - /opt/apache-maven-3.8.8
+
+---------------------------------
+Dashboard > Manage jenkins > plugin
+
+Docker plugin
+Docker Pipeline
+Docker Commons Plugin
+docker-build-step
+-------------------------------------
+withDockerRegistry: Sets up Docker registry endpoint
+Docker registry URL :  https://registry-1.docker.io
+Registry credentials : harshalgaikwad/****** (docker hub login)
+----------------
+ERROR: Cannot connect to the Docker daemon at unix:///var/run/docker.sock. Is the docker daemon running?
+Install docker on ec2 instance.
+
+yum install docker -y
+usermod -aG docker jenkins
+service docker start
+service docker enabel
+systemctl restart jenkins
+docker tag webapp harshalgaikwad/webapp:latest
+docker push  harshalgaikwad/webapp:latest
+docker login -u "harshalgaikwad" --password "************"
+docker login 
+
+-------------------------------------------------------------------------------------------------
+How to install trivy 
+rpm -ivh https://github.com/aquasecurity/trivy/releases/download/v0.18.3/trivy_0.18.3_Linux-64bit.rpm
+-----------------------------------------------------------------------------------------------------
+pipeline {    
+    agent any 
+
+    tools {
+        jdk 'jdk17'
+        maven 'maven3'
+          }
+
+    stages {
+        
+        stage ('git checkout') {
+            steps {
+                checkout scmGit(branches: [[name: '*/main']], extensions: [], userRemoteConfigs: [[url: 'https://github.com/harshalgaikwad25/BoardGame.git']])
+            }
+        }
+        
+        stage ('maven compile and test') {
+            steps {
+                sh   "mvn compile"
+                sh   "mvn test"
+            }
+        }
+        stage('File system scan') {
+            steps {
+                sh "trivy fs --format table -o trivy-fs-report.html ."
+            }
+        }
+        
+        stage ('mvn build') {
+            steps {
+                sh "mvn clean package"
+            }
+        }
+        
+        stage ('Docker build and tag') {
+            steps {
+                script {
+                   withDockerRegistry(credentialsId: 'docker-hub', toolName: 'docker' )
+                    {
+                        sh   "docker build -t boardgame ."
+                        sh   "docker tag boardgame  harshalgaikwad/boardgame:latest"
+                    }
+                }
+            }
+        }
+        
+        stage('Docker Image Scan') {
+            steps {
+                script {
+                    withDockerRegistry(credentialsId: 'docker-hub', toolName: 'docker') {
+                        sh "trivy image --format table -o trivy-image-report.html harshalgaikwad/boardgame:latest"
+                    }
+                }
+            }
+        }        
+        stage('Push Docker Image') {
+            steps {
+                script {
+                    withDockerRegistry(credentialsId: 'docker-hub', toolName: 'docker') {
+                        sh "docker push harshalgaikwad/boardgame:latest"
+                    }
+                }
+            }
+        }
+        
+        stage('Clean Up') {
+            steps {
+                script {
+                    sh "docker stop my-app || true"
+                    sh "docker rm my-app || true"
+                }
+            }
+        }        
+        stage ('Deploy app on container') {
+            steps {
+                script {
+                   withDockerRegistry(credentialsId: 'docker-hub', toolName: 'docker' )
+                    {
+                        sh "docker run -d --name my-app  -p 8081:8080 harshalgaikwad/boardgame:latest"
+
+                    }
+                }
+            }
+        }              
+    }
+}
+
+-----------------------------------------------------------------------------------------------------------------------
+pipeline {    
+    agent any 
+
+    tools {
+        jdk 'jdk17'
+        maven 'maven3'
+          }
+          
+    stages {
+        
+        stage ('hello') {
+            steps {
+                echo 'Hello World'
+            }
+        }       
+        stage ('git checkout') {
+            steps {
+                checkout scmGit(branches: [[name: '*/master']], extensions: [], userRemoteConfigs: [[url: 'https://github.com/harshalgaikwad25/war-web-project.git']])
+            }
+        }        
+        stage ('maven compile') {
+            steps {
+                sh '''mvn compile'''
+            }
+        }        
+        stage ('mvn build') {
+            steps {
+                sh '''mvn clean package'''
+            }
+        }        
+        stage ('Docker build and push') {
+            steps {
+                script {
+                   withDockerRegistry(credentialsId: 'docker-hub', url: 'https://registry-1.docker.io',  toolName: 'docker' )
+                    {
+                        sh '''  docker build -t app . '''
+                        sh '''  docker tag app  harshalgaikwad/app:latest '''
+                        sh '''  docker login -u "harshalgaikwad" --password "*********" '''
+                        sh '''  docker push harshalgaikwad/app:latest '''
+                    }
+                }
+            }
+        }        
+        stage('Clean Up') {
+            steps {
+                script {
+                    sh 'docker stop my-app || true'
+                    sh 'docker rm my-app || true'
+                }
+            }
+        }        
+        stage ('Deploy app on tomcat') {
+            steps {
+                script {
+                   withDockerRegistry(credentialsId: 'docker-hub', url: 'https://registry-1.docker.io',  toolName: 'docker' )
+                    {
+                        sh '''  docker run -d --name my-app  -p 8081:8080 harshalgaikwad/app:latest'''
+
+                    }
+                }
+            }
+        }   
+    }
+}
+
+
+----------------------
+pipeline {
+    
+    agent any 
+    
+    tools {
+        jdk 'jdk17'
+        maven 'maven3'
+          }
+          
+    stages {
+        
+        stage ('hello') {
+            steps {
+                echo 'Hello World'
+            }
+        }
+        
+        stage ('git checkout') {
+            steps {
+                checkout scmGit(branches: [[name: '*/master']], extensions: [], userRemoteConfigs: [[url: 'https://github.com/harshalgaikwad25/sparkjava-war-example.git']])
+            }
+        }
+        
+        stage ('maven compile') {
+            steps {
+                sh '''mvn compile'''
+            }
+        }
+        
+        stage ('mvn build') {
+            steps {
+                sh '''mvn clean package -DskipTests'''
+            }
+        }
+        
+        stage ('Docker build and push') {
+            steps {
+                script {
+                   withDockerRegistry(credentialsId: 'docker-hub', url: 'https://registry-1.docker.io',  toolName: 'docker' )
+                    {
+                        sh '''  docker build -t app . '''
+                        sh '''  docker tag app  harshalgaikwad/app:latest '''
+                        sh '''  docker login -u "harshalgaikwad" --password "******" '''
+                        sh '''  docker push harshalgaikwad/app:latest '''
+                    }
+                }
+            }
+        }
+        
+        stage('Clean Up') {
+            steps {
+                script {
+                    sh 'docker stop my-app || true'
+                    sh 'docker rm my-app || true'
+                }
+            }
+        }
+        
+        stage ('Deploy app on tomcat') {
+            steps {
+                script {
+                   withDockerRegistry(credentialsId: 'docker-hub', url: 'https://registry-1.docker.io',  toolName: 'docker' )
+                    {
+                        sh '''  docker run -d --name my-app  -p 8081:8080 harshalgaikwad/app:latest'''
+
+                    }
+                }
+            }
+        }      
+    }
+}
+-------------------------------------------------------------------------------------------------------------------
+
+pipeline {
+    
+    agent any 
+    
+    tools {
+        jdk 'jdk17'
+        maven 'maven3'
+          }
+          
+    stages {
+        
+        stage ('hello') {
+            steps {
+                echo 'Hello World'
+            }
+        }
+        
+        stage ('git checkout') {
+            steps {
+                checkout scmGit(branches: [[name: '*/main']], extensions: [], userRemoteConfigs: [[url: 'https://github.com/jaiswaladi246/Petclinic.git']])
+            }
+        }
+        
+        stage ('maven compile') {
+            steps {
+                sh '''mvn compile'''
+            }
+        }
+        
+        stage ('mvn build') {
+            steps {
+                sh '''mvn clean package'''
+            }
+        }
+        
+        stage ('Docker build and push') {
+            steps {
+                script {
+                   withDockerRegistry(credentialsId: 'docker-hub', url: 'https://registry-1.docker.io') , toolName: 'docker' )
+                    {
+                        sh '''  docker build -t app . '''
+                        sh '''  docker tag app  harshalgaikwad/app:latest '''
+                        sh '''  docker login -u "harshalgaikwad" --password "**********" '''
+                        sh '''  docker push harshalgaikwad/app:latest '''
+                    }
+                }
+            }
+        }
+            
+        
+    }
+}
+
+
+--------------------------------------------
+***********BANK APP LOGIN *******
+
+pipeline {
+    agent any
+    
+    tools {
+        jdk 'jdk17'
+        maven 'maven3'
+    }
+
+    stages {
+        stage('Git checkout ') {
+            steps {
+                checkout scmGit(branches: [[name: '*/start']], extensions: [], userRemoteConfigs: [[url: 'https://github.com/harshalgaikwad25/Bank-App.git']])
+            }
+        }
+        stage ('maven build') {
+            steps {
+                sh 'mvn clean package'
+            }
+        }
+        stage ('docker build and push ') {
+            steps {
+                script {
+                   withDockerRegistry(credentialsId: 'docker-hub', url: 'https://registry-1.docker.io' , toolName: 'docker' ) 
+                    {
+                        sh 'docker build -t app .'
+                        sh 'docker tag app  harshalgaikwad/app:latest'
+                        sh 'docker login -u "harshalgaikwad" --password "*******" '
+                        sh 'docker push harshalgaikwad/app:latest'
+                    }
+                       }
+                  }
+        }
+        stage ('deply on container') {
+            steps {
+                 script {
+                   withDockerRegistry(credentialsId: 'docker-hub', url: 'https://registry-1.docker.io' , toolName: 'docker' )
+                   {
+                       sh 'docker run -d -p 8081:8080 --name bankapp app'
+                
+                   }       
+                   }
+        }
+        }
+        
+}
+}
+---------------------------------------------------------------------------------------
+pipeline {
+    agent any
+    
+    tools {
+        jdk 'jdk17'
+        maven 'maven3'
+    }
+
+    stages {
+        stage('Git checkout ') {
+            steps {
+                checkout scmGit(branches: [[name: '*/main']], extensions: [], userRemoteConfigs: [[url: 'https://github.com/harshalgaikwad25/FullStack-Blogging-App.git']])
+            }
+        }
+        stage ('maven build') {
+            steps {
+                sh 'mvn clean package'
+            }
+        }
+        stage ('docker build and push ') {
+            steps {
+                script {
+                   withDockerRegistry(credentialsId: 'docker-hub', url: 'https://registry-1.docker.io' , toolName: 'docker' ) 
+                    {
+                        sh 'docker build -t blogging-app .'
+                        sh 'docker tag app  harshalgaikwad/blogging-app:latest'
+                        sh 'docker login -u "harshalgaikwad" --password "***********" '
+                        sh 'docker push harshalgaikwad/blogging-app:latest'
+                    }
+                       }
+                  }
+        }
+        stage ('deply on container') {
+            steps {
+                 script {
+                   withDockerRegistry(credentialsId: 'docker-hub', url: 'https://registry-1.docker.io' , toolName: 'docker' )
+                   {
+                       sh 'docker run -d -p 8081:8080 --name blogging-app1 blogging-app'
+                
+                   }       
+                   }
+        }
+        }
+        
+}
+}
+
+
+--------------------------------------------------------------------------------------------
+pipeline {
+    agent any
+    
+    tools {
+       // jdk 'jdk17'
+        maven 'maven3'
+          }
+          
+    environment {
+        JAVA_HOME = '/usr/lib/jvm/java-17-amazon-corretto.x86_64'  // Set your JAVA_HOME path
+        PATH = "${JAVA_HOME}/bin:${env.PATH}"  // Update PATH to include JAVA_HOME/bin
+    }
+
+    stages {
+        stage('Hello') {
+            steps {
+                echo 'Hello World'
+                sh 'echo $JAVA_HOME'
+                sh 'echo $PATH'
+            }
+        }
+        stage ('git checkout') {
+            steps {
+                checkout scmGit(branches: [[name: '*/start']], extensions: [], userRemoteConfigs: [[url: 'https://github.com/harshalgaikwad25/Bank-App.git']])
+            }
+        }        
+        stage ('maven compile') {
+            steps {
+                sh '''mvn compile'''
+            }
+        }        
+        stage ('mvn build') {
+            steps {
+                sh '''mvn clean package'''
+            }
+        }
+        stage ('docker build ') {
+            steps {
+                script {
+                    withDockerRegistry(credentialsId: 'docker-hub', url: 'https://registry-1.docker.io') {
+                    
+                    sh '''  docker build -t app1 . '''
+                    sh '''  docker tag app1  harshalgaikwad/app1:latest '''
+                    sh '''  docker login -u "harshalgaikwad" --password "Gaikwad@1997" '''
+                    sh '''  docker push harshalgaikwad/app1:latest '''
+                    }
+                }
+            }
+        }
+        stage('Clean Up') {
+            steps {
+                script {
+                    sh 'docker stop my-app || true'
+                    sh 'docker rm my-app || true'
+                }
+            }
+        }
+        stage ('Deploy app on tomcat') {
+            steps {
+                script {
+                   withDockerRegistry(credentialsId: 'docker-hub', url: 'https://registry-1.docker.io',  toolName: 'docker' )
+                    {
+                        sh '''  docker run -d --name my-app  -p 8081:8080 harshalgaikwad/app1:latest'''
+
+                    }
+                }
+            }
+        }
+        
+    }
+}
+--------------------------------------------------------
+Super Spy app (Mission)
+
+pipeline {    
+    agent any 
+
+    tools {
+        jdk 'jdk17'
+        maven 'maven3'
+          }
+
+    stages {
+        
+        stage ('git checkout') {
+            steps {
+                checkout scmGit(branches: [[name: '*/main']], extensions: [], userRemoteConfigs: [[url: 'https://github.com/harshalgaikwad25/Mission.git']])
+            }
+        }
+        
+        stage ('maven compile and test') {
+            steps {
+                sh   "mvn compile"
+             //   sh   "mvn test"
+            }
+        }
+        stage('File system scan') {
+            steps {
+                sh "trivy fs --format table -o trivy-fs-report.html ."
+            }
+        }
+        
+        stage ('mvn build') {
+            steps {
+                sh "mvn clean package -DskipTests"
+            }
+        }
+        
+        stage ('Docker build and tag') {
+            steps {
+                script {
+                   withDockerRegistry(credentialsId: 'docker-hub', toolName: 'docker' )
+                    {
+                        sh   "docker build -t mission ."
+                        sh   "docker tag mission  harshalgaikwad/mission:latest"
+                    }
+                }
+            }
+        }
+        
+        stage('Docker Image Scan') {
+            steps {
+                script {
+                    withDockerRegistry(credentialsId: 'docker-hub', toolName: 'docker') {
+                        sh "trivy image --format table -o trivy-image-report.html harshalgaikwad/mission:latest"
+                    }
+                }
+            }
+        }        
+        stage('Push Docker Image') {
+            steps {
+                script {
+                    withDockerRegistry(credentialsId: 'docker-hub', toolName: 'docker') {
+                        sh "docker push harshalgaikwad/mission:latest"
+                    }
+                }
+            }
+        }
+        
+        stage('Clean Up') {
+            steps {
+                script {
+                    sh "docker stop my-app || true"
+                    sh "docker rm my-app || true"
+                }
+            }
+        }        
+        stage ('Deploy app on container') {
+            steps {
+                script {
+                   withDockerRegistry(credentialsId: 'docker-hub', toolName: 'docker' )
+                    {
+                        sh "docker run -d --name my-app  -p 8081:8080 harshalgaikwad/mission:latest"
+
+                    }
+                }
+            }
+        }              
+    }
+}
+____________________________________
+
+pipeline {    
+    agent any 
+
+    tools {
+        jdk 'jdk17'
+        maven 'maven3'
+          }
+
+    stages {
+        
+        stage ('git checkout') {
+            steps {
+                checkout scmGit(branches: [[name: '*/main']], extensions: [], userRemoteConfigs: [[url: 'https://github.com/harshalgaikwad25/Mission.git']])
+            }
+        }
+        
+        stage ('maven compile and test') {
+            steps {
+                sh   "mvn compile"
+             //   sh   "mvn test"
+            }
+        }
+        stage('File system scan') {
+            steps {
+                sh "trivy fs --format table -o trivy-fs-report.html ."
+            }
+        }
+        
+        stage ('mvn build') {
+            steps {
+                sh "mvn clean package -DskipTests"
+            }
+        }
+        
+        stage ('Docker build and tag') {
+            steps {
+                script {
+                  withDockerRegistry(credentialsId: 'docker-cred', url: 'https://index.docker.io/v1/')
+                    {
+                        sh   "docker build -t mission ."
+                        sh   "docker tag mission  harshalgaikwad/mission:latest"
+                    }
+                }
+            }
+        }
+        
+        stage('Docker Image Scan') {
+            steps {
+                script {
+                    withDockerRegistry(credentialsId: 'docker-cred', url: 'https://index.docker.io/v1/') {
+                        sh "trivy image --format table -o trivy-image-report.html harshalgaikwad/mission:latest"
+                    }
+                }
+            }
+        }        
+        stage('Push Docker Image') {
+            steps {
+                script {
+                    withDockerRegistry(credentialsId: 'docker-cred', url: 'https://index.docker.io/v1/') {
+                        sh "docker push harshalgaikwad/mission:latest"
+                    }
+                }
+            }
+        }
+        
+        stage('Clean Up') {
+            steps {
+                script {
+                    sh "docker stop my-app || true"
+                    sh "docker rm my-app || true"
+                }
+            }
+        }        
+        stage ('Deploy app on container') {
+            steps {
+                script {
+                   withDockerRegistry(credentialsId: 'docker-cred', url: 'https://index.docker.io/v1/')
+                    {
+                        sh "docker run -d --name my-app  -p 8081:8080 harshalgaikwad/mission:latest"
+
+                    }
+                }
+            }
+        }              
+    }
+}
+----------------------------------------------
+
+pipeline {
+    agent any 
+    
+    tools {
+        jdk 'jdk17'
+        maven 'maven3'
+    }
+    
+    stages {
+        stage ('hello') {
+            steps {
+                sh 'echo "hello world"'
+                sh 'uname -a '
+                sh 'df -h'
+                sh 'whoami'
+                sh 'ps -ef | grep java'
+                sh 'free -gh'
+            }
+        }
+        
+        stage ('git checkout ') {
+            steps {
+                checkout scmGit(branches: [[name: '*/main']], extensions: [], gitTool: 'Default', userRemoteConfigs: [[url: 'https://github.com/harshalgaikwad25/BoardGame.git']])
+            }
+        }
+        
+        stage ('maven compile') {
+            steps {
+                sh 'mvn compile'
+                sh 'mvn test'
+            }
+        }
+        stage ('maven build') {
+            steps {
+                sh 'mvn package'
+            }
+        }
+        stage ('build docker image')
+        {
+            steps {
+                withDockerRegistry(credentialsId: 'docker-cred', url: 'https://index.docker.io/v1/') {
+                    sh 'docker build -t boardgame .'
+                    sh 'docker tag  boardgame harshalgaikwad/boardgame:latest'
+                }
+            }
+        }
+        stage ('push docker image') {
+            steps {
+                withDockerRegistry(credentialsId: 'docker-cred', url: 'https://index.docker.io/v1/') {
+                    sh 'docker push harshalgaikwad/boardgame:latest'
+                }
+            }
+        }
+        stage ('clean up') {
+            steps {
+                sh 'docker stop app || true '
+                sh 'docker rm app || true'
+            }
+        }
+        stage ('docker conatiner') {
+            steps {
+                withDockerRegistry(credentialsId: 'docker-cred', url: 'https://index.docker.io/v1/') {
+                sh "docker run -d --name app  -p 8081:8080 harshalgaikwad/boardgame:latest" 
+                
+                }
+            }
+        }
+        
+    }
+}
+----------------------------------------------------
+Dockerfile :
+
+FROM openjdk:17
+ADD target/bankapp-0.0.1-SNAPSHOT.jar bankapp-0.0.1-SNAPSHOT.jar
+ENTRYPOINT ["java","-jar","/bankapp-0.0.1-SNAPSHOT.jar"]
+
+---------------
+FROM openjdk:8
+EXPOSE 8082
+ADD target/petclinic.war petclinic.war
+ENTRYPOINT ["java","-jar","/petclinic.war"]
+
+no main manifest attribute, in petclinic.war
+
+
+docker run -d --name my-app3 -p 8081:8080 14d23e0ac547
+
+docker run -d --name my-app3 -p 8081:8080 f3ac0ee23fe9
+
+----------------------------------------------------------------------------------------------------

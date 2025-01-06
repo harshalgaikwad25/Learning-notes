@@ -1,0 +1,16 @@
+
+Disk space is below threshold of 1.00 GiB. Only 474.59 MiB out of 474.75 MiB left on /tmp.
+
+add new volume to /tmp in amezon intance 
+
+lsblk
+     mkfs -t ext4 /dev/sdb
+     mkdir /mnt/tmp
+     mount /dev/sdb /mnt/tmp
+     cp -a /tmp/* /mnt/tmp/
+     vi /etc/fstab
+     /dev/sdb  /tmp  ext4  defaults,nofail  0  2
+     umount /mnt/tmp
+     umount /tmp
+     mount /dev/sdb /tmp
+     df -h
