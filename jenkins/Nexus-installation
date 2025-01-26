@@ -1,0 +1,49 @@
+Sonatype Nexus System Requirements
+Minimum 1 VCPU & 2 GB Memory
+Server firewall opened for port 22 & 8081
+OpenJDK 17
+All Nexus processes should run as a non-root nexus user.
+---------------------------------------------------------------------------------------------------------------------------
+Documents - https://devopscube.com/how-to-install-latest-sonatype-nexus-3-on-linux/
+EC2 : t2.medium 
+-------------------------------------------------------------------------------------------------------------------------
+sudo yum update -y
+sudo yum install wget -y
+sudo yum install java-17-amazon-corretto.x86_64
+sudo mkdir /app && cd /app
+sudo wget -O nexus.tar.gz https://download.sonatype.com/nexus/3/latest-unix.tar.gz
+sudo tar -xvf nexus.tar.gz
+sudo mv nexus-3* nexus
+sudo adduser nexus
+sudo chown -R nexus:nexus /app/nexus
+sudo chown -R nexus:nexus /app/sonatype-work
+sudo vi  /app/nexus/bin/nexus.rc
+run_as_user="nexus"
+
+sudo vi /etc/systemd/system/nexus.service
+
+[Unit]
+Description=nexus service
+After=network.target
+
+[Service]
+Type=forking
+LimitNOFILE=65536
+User=nexus
+Group=nexus
+ExecStart=/app/nexus/bin/nexus start
+ExecStop=/app/nexus/bin/nexus stop
+User=nexus
+Restart=on-abort
+
+[Install]
+WantedBy=multi-user.target
+
+sudo chkconfig nexus on  (Execute the following command to add nexus service to boot.)
+sudo systemctl start nexus
+
+http://:8081
+
+Default username is admin
+
+You can find the default admin password in /app/sonatype-work/nexus3/admin.password file. 
