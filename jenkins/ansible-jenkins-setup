@@ -1,0 +1,144 @@
+---
+- name: Install Jenkins, Maven, Java, Trivy, and Docker
+  hosts: localhost
+  become: yes
+
+  vars:
+    maven_version: "3.8.9"
+    maven_dir: "apache-maven-{{ maven_version }}"
+    maven_archive: "apache-maven-{{ maven_version }}-bin.tar.gz"
+    maven_download_url: "https://dlcdn.apache.org/maven/maven-3/{{ maven_version }}/binaries/{{ maven_archive }}"
+    maven_install_path: "/opt/{{ maven_dir }}"
+    java_home: "/usr/lib/jvm/java-17-amazon-corretto.x86_64"
+    trivy_rpm_url: "https://github.com/aquasecurity/trivy/releases/download/v0.18.3/trivy_0.18.3_Linux-64bit.rpm"
+
+  tasks:
+
+    ## --------------------
+    ## Jenkins Installation
+    ## --------------------
+
+    - name: Add Jenkins repository
+      get_url:
+        url: https://pkg.jenkins.io/redhat-stable/jenkins.repo
+        dest: /etc/yum.repos.d/jenkins.repo
+
+    - name: Import Jenkins GPG key
+      rpm_key:
+        state: present
+        key: https://pkg.jenkins.io/redhat-stable/jenkins.io-2023.key
+
+    - name: Upgrade all packages
+      yum:
+        name: "*"
+        state: latest
+
+    - name: Install required packages
+      yum:
+        name:
+          - java-17-amazon-corretto
+          - jenkins
+        state: present
+
+    - name: Set JAVA_HOME and PATH globally
+      copy:
+        dest: /etc/profile.d/java.sh
+        content: |
+          export JAVA_HOME={{ java_home }}
+          export PATH=$JAVA_HOME/bin:$PATH
+        mode: '0755'
+
+    - name: Enable Jenkins service
+      systemd:
+        name: jenkins
+        enabled: yes
+
+    - name: Start Jenkins service
+      systemd:
+        name: jenkins
+        state: started
+
+    ## --------------------
+    ## Maven Installation
+    ## --------------------
+
+    - name: Download Maven
+      get_url:
+        url: "{{ maven_download_url }}"
+        dest: "/tmp/{{ maven_archive }}"
+
+    - name: Extract Maven
+      unarchive:
+        src: "/tmp/{{ maven_archive }}"
+        dest: /opt
+        remote_src: yes
+
+    - name: Create Maven symlink
+      file:
+        src: "{{ maven_install_path }}"
+        dest: /opt/maven
+        state: link
+        force: yes
+
+    - name: Set Maven environment
+      copy:
+        dest: /etc/profile.d/maven.sh
+        content: |
+          export M2_HOME=/opt/maven
+          export PATH=$M2_HOME/bin:$PATH
+        mode: '0755'
+
+    - name: Source Maven and check version
+      shell: source /etc/profile.d/maven.sh && mvn -v
+      register: maven_version_output
+
+    - name: Show Maven version
+      debug:
+        var: maven_version_output.stdout_lines
+
+    ## --------------------
+    ## Trivy Installation
+    ## --------------------
+
+    - name: Download Trivy RPM
+      get_url:
+        url: https://github.com/aquasecurity/trivy/releases/download/v0.18.3/trivy_0.18.3_Linux-64bit.rpm
+        dest: /tmp/trivy.rpm
+
+    - name: Install Trivy (GPG validation skipped)
+      command: rpm -ivh /tmp/trivy.rpm
+
+
+    ## --------------------
+    ## Docker Installation
+    ## --------------------
+
+    - name: Install Docker
+      yum:
+        name: docker
+        state: present
+
+    - name: Add Jenkins user to docker group
+      user:
+        name: jenkins
+        groups: docker
+        append: yes
+
+    - name: Enable Docker service
+      systemd:
+        name: docker
+        enabled: yes
+
+    - name: Start Docker service
+      systemd:
+        name: docker
+        state: started
+
+    ## --------------------
+    ## Restart Jenkins to apply Docker group
+    ## --------------------
+
+    - name: Restart Jenkins to apply group changes
+      systemd:
+        name: jenkins
+        state: restarted
