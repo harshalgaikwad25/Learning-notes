@@ -1,0 +1,110 @@
+---
+- name: Install and configure Nexus 3.82.0-08 on EC2
+  hosts: localhost
+  become: yes
+
+  vars:
+    nexus_url: https://download.sonatype.com/nexus/3/nexus-3.82.0-08-linux-x86_64.tar.gz
+    nexus_tar: nexus-3.82.0-08-linux-x86_64.tar.gz
+    nexus_user: nexus
+    nexus_group: nexus
+    install_dir: /app
+    nexus_extracted_dir: nexus-3.82.0-08
+    nexus_symlink: /app/nexus
+    nexus_work_dir: /app/sonatype-work
+    nexus_service_path: /etc/systemd/system/nexus.service
+
+  tasks:
+
+    - name: Update all packages
+      yum:
+        name: "*"
+        state: latest
+
+    - name: Install required packages
+      yum:
+        name:
+          - wget
+          - java-17-amazon-corretto
+        state: present
+
+    - name: Create installation directory
+      file:
+        path: "{{ install_dir }}"
+        state: directory
+
+    - name: Download Nexus tarball
+      get_url:
+        url: "{{ nexus_url }}"
+        dest: "{{ install_dir }}/{{ nexus_tar }}"
+
+    - name: Extract Nexus
+      unarchive:
+        src: "{{ install_dir }}/{{ nexus_tar }}"
+        dest: "{{ install_dir }}"
+        remote_src: yes
+
+    - name: Rename Nexus directory to standard symlink
+      command: mv {{ install_dir }}/{{ nexus_extracted_dir }} {{ nexus_symlink }}
+      args:
+        creates: "{{ nexus_symlink }}/bin/nexus"
+
+    - name: Create nexus user
+      user:
+        name: "{{ nexus_user }}"
+        shell: /bin/bash
+        create_home: yes
+
+    - name: Ensure correct ownership of Nexus directory
+      file:
+        path: "{{ nexus_symlink }}"
+        owner: "{{ nexus_user }}"
+        group: "{{ nexus_group }}"
+        recurse: yes
+
+    - name: Ensure correct ownership of sonatype-work directory
+      file:
+        path: "{{ nexus_work_dir }}"
+        owner: "{{ nexus_user }}"
+        group: "{{ nexus_group }}"
+        recurse: yes
+
+    - name: Configure nexus.rc to run as nexus user
+      lineinfile:
+        path: "{{ nexus_symlink }}/bin/nexus.rc"
+        line: 'run_as_user="{{ nexus_user }}"'
+        create: yes
+
+    - name: Create systemd service for Nexus
+      copy:
+        dest: "{{ nexus_service_path }}"
+        content: |
+          [Unit]
+          Description=nexus service
+          After=network.target
+
+          [Service]
+          Type=forking
+          LimitNOFILE=65536
+          User={{ nexus_user }}
+          Group={{ nexus_group }}
+          ExecStart={{ nexus_symlink }}/bin/nexus start
+          ExecStop={{ nexus_symlink }}/bin/nexus stop
+          Restart=on-abort
+
+          [Install]
+          WantedBy=multi-user.target
+
+    - name: Reload systemd daemon
+      command: systemctl daemon-reexec
+
+    - name: Enable Nexus to start at boot
+      systemd:
+        name: nexus
+        enabled: yes
+
+    - name: Start Nexus service
+      systemd:
+        name: nexus
+        state: started
+
